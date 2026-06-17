@@ -13,6 +13,7 @@ except ImportError:
 class TextStats:
     char_count: int = 0
     word_count: int = 0
+    unique_word_count: int = 0
     line_count: int = 0
     sentence_count: int = 0
     top_words: list[tuple[str, int]] = field(default_factory=list)
@@ -44,6 +45,7 @@ def analyze(text: str) -> TextStats:
     line_count = text.count('\n') + (1 if text and not text.endswith('\n') else 0) if text else 0
     words = _tokenize(text)
     word_count = len(words)
+    unique_word_count = len(set(words))
     sentence_count = len(_SENTENCE_ENDINGS.findall(text))
 
     top_words = Counter(words).most_common(10)
@@ -51,6 +53,7 @@ def analyze(text: str) -> TextStats:
     return TextStats(
         char_count=char_count,
         word_count=word_count,
+        unique_word_count=unique_word_count,
         line_count=line_count,
         sentence_count=sentence_count,
         top_words=top_words,
@@ -64,10 +67,11 @@ The dog barked. 那只敏捷的棕色狐狸跳过了懒惰的狗。
 Another sentence here. And another one! 狐狸很聪明。"""
 
     stats = analyze(sample)
-    print(f"字符数: {stats.char_count}")
-    print(f"单词数: {stats.word_count}")
-    print(f"行数:   {stats.line_count}")
-    print(f"句子数: {stats.sentence_count}")
+    print(f"字符数:     {stats.char_count}")
+    print(f"单词数:     {stats.word_count}")
+    print(f"去重单词数: {stats.unique_word_count}")
+    print(f"行数:       {stats.line_count}")
+    print(f"句子数:     {stats.sentence_count}")
     print("高频词 Top 10:")
     for word, count in stats.top_words:
         print(f"  {word}: {count}")
