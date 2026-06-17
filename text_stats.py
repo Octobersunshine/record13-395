@@ -2,6 +2,12 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 
+try:
+    import jieba
+    _JIEBA_AVAILABLE = True
+except ImportError:
+    _JIEBA_AVAILABLE = False
+
 
 @dataclass
 class TextStats:
@@ -13,18 +19,34 @@ class TextStats:
 
 
 _SENTENCE_ENDINGS = re.compile(r'[.!?。！？]+')
-_WORD_PATTERN = re.compile(r"[A-Za-z']+")
+_EN_WORD_PATTERN = re.compile(r"[A-Za-z']+")
+_CJK_CHAR_PATTERN = re.compile(r'[\u4e00-\u9fff]+')
+
+
+def _tokenize(text: str) -> list[str]:
+    tokens: list[str] = []
+
+    en_words = _EN_WORD_PATTERN.findall(text)
+    tokens.extend(w.lower() for w in en_words)
+
+    cjk_blocks = _CJK_CHAR_PATTERN.findall(text)
+    for block in cjk_blocks:
+        if _JIEBA_AVAILABLE:
+            tokens.extend(t for t in jieba.lcut(block) if t.strip())
+        else:
+            tokens.extend(list(block))
+
+    return tokens
 
 
 def analyze(text: str) -> TextStats:
     char_count = len(text)
     line_count = text.count('\n') + (1 if text and not text.endswith('\n') else 0) if text else 0
-    words = _WORD_PATTERN.findall(text)
+    words = _tokenize(text)
     word_count = len(words)
     sentence_count = len(_SENTENCE_ENDINGS.findall(text))
 
-    lower_words = [w.lower() for w in words]
-    top_words = Counter(lower_words).most_common(10)
+    top_words = Counter(words).most_common(10)
 
     return TextStats(
         char_count=char_count,
@@ -37,8 +59,9 @@ def analyze(text: str) -> TextStats:
 
 if __name__ == "__main__":
     sample = """The quick brown fox jumps over the lazy dog.
-The dog barked. The fox ran away! Did the fox return? No, the fox did not.
-Another sentence here. And another one! The fox is clever."""
+The dog barked. 那只敏捷的棕色狐狸跳过了懒惰的狗。
+那只狗汪汪叫。狐狸跑掉了！狐狸回来了吗？不，狐狸没有回来。
+Another sentence here. And another one! 狐狸很聪明。"""
 
     stats = analyze(sample)
     print(f"字符数: {stats.char_count}")
